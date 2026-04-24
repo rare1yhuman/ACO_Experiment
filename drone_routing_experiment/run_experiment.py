@@ -15,7 +15,6 @@ from grid_gen import generate_grid, DEPOT_POS
 from graph_builder import build_graph, validate_graph
 from dijkstra import build_dijkstra_tour
 from aco import run_aco
-from ga import run_ga
 from metrics import (collect_trial_metrics, compute_summary_statistics,
                     create_summary_table, save_trial_metrics,
                     save_summary_table, print_summary)
@@ -35,7 +34,6 @@ TRIALS = [
 ]
 
 NUM_ACO_RUNS = 10  # Number of ACO repetitions per trial for statistics
-NUM_GA_RUNS = 10   # Number of GA repetitions per trial for statistics
 
 
 def run_single_trial(trial_config: Dict, results_base_dir: str) -> Dict:
@@ -106,38 +104,17 @@ def run_single_trial(trial_config: Dict, results_base_dir: str) -> Dict:
     # Use first ACO run for visualizations
     aco_representative = aco_results[0]
 
-    # Step 5: Run GA multiple times
-    print(f"\nStep 5: Running GA ({NUM_GA_RUNS} runs)...")
-    ga_results = []
-
-    for run_id in range(NUM_GA_RUNS):
-        # Set run-specific seed for stochastic variation
-        run_seed = seed + run_id * 1000 + 500  # Offset from ACO seeds
-        random.seed(run_seed)
-        np.random.seed(run_seed)
-
-        print(f"  Run {run_id+1}/{NUM_GA_RUNS}...", end='', flush=True)
-        ga_result = run_ga(G, grid, DEPOT_POS, delivery_points,
-                           dijkstra_result['total_distance_m'],
-                           verbose=False)
-        ga_results.append(ga_result)
-        print(f" {ga_result['best_tour_distance']:.1f}m")
-
-    # Use first GA run for visualizations
-    ga_representative = ga_results[0]
-
-    # Step 6: Collect metrics
-    print(f"\nStep 6: Collecting metrics...")
+    # Step 5: Collect metrics
+    print(f"\nStep 5: Collecting metrics...")
     trial_data = collect_trial_metrics(trial_id, seed, has_nfz,
-                                      dijkstra_result, aco_results,
-                                      ga_results=ga_results)
+                                      dijkstra_result, aco_results)
     save_trial_metrics(trial_data, trial_dir)
 
     summary = compute_summary_statistics(trial_data)
     print_summary(summary)
 
-    # Step 7: Generate visualizations
-    print(f"\nStep 7: Generating visualizations...")
+    # Step 6: Generate visualizations
+    print(f"\nStep 6: Generating visualizations...")
 
     # Figure A: Dijkstra route only
     plot_dijkstra_route(grid, nfz_blocks, DEPOT_POS, delivery_points,
@@ -152,18 +129,9 @@ def run_single_trial(trial_config: Dict, results_base_dir: str) -> Dict:
                   improvement, trial_id, seed,
                   os.path.join(trial_dir, 'fig_B_aco.png'))
 
-    # Figure B2: GA route
-    ga_improvement = (dijkstra_result['total_distance_m'] - ga_representative['best_tour_distance']) / dijkstra_result['total_distance_m'] * 100
-    plot_aco_route(grid, nfz_blocks, DEPOT_POS, delivery_points,
-                  ga_representative['best_tour_path'], ga_representative['best_tour_distance'],
-                  ga_improvement, trial_id, seed,
-                  os.path.join(trial_dir, 'fig_B2_ga.png'),
-                  algorithm_name='GA')
-
-    # Figure C: Convergence curve (ACO + GA overlay)
+    # Figure C: Convergence curve
     plot_convergence(aco_representative, dijkstra_result['total_distance_m'],
-                    trial_id, os.path.join(trial_dir, 'fig_C_convergence.png'),
-                    ga_result=ga_representative)
+                    trial_id, os.path.join(trial_dir, 'fig_C_convergence.png'))
 
     # Figure D: Path score heatmap
     plot_path_score_heatmap(aco_representative['path_score_matrix'], grid, nfz_blocks,
@@ -184,13 +152,12 @@ def main():
     Run all experimental trials.
     """
     print("="*70)
-    print("SIMULATION: Dijkstra vs ACO vs GA for Drone Routing with NFZs")
+    print("SIMULATION: Dijkstra vs ACO for Drone Routing with NFZs")
     print("="*70)
     print(f"\nExperiment Configuration:")
     print(f"  Total trials: {len(TRIALS)}")
     print(f"  ACO runs per trial: {NUM_ACO_RUNS}")
-    print(f"  GA runs per trial: {NUM_GA_RUNS}")
-    print(f"  Total runs: {len(TRIALS) * (NUM_ACO_RUNS + NUM_GA_RUNS)}")
+    print(f"  Total ACO runs: {len(TRIALS) * NUM_ACO_RUNS}")
 
     # Create results directory
     results_dir = 'results'
@@ -231,12 +198,9 @@ def main():
 
     print(f"\nKey Findings:")
     overall = summary_df[summary_df['trial_id'] == 'Overall'].iloc[0]
-    print(f"  Mean ACO improvement over Dijkstra: {overall['improvement_pct']:.2f}%")
+    print(f"  Mean improvement: {overall['improvement_pct']:.2f}%")
     print(f"  Mean Dijkstra distance: {overall['dijkstra_distance_m']:.1f}m")
     print(f"  Mean ACO distance: {overall['aco_mean_distance_m']:.1f}m")
-    if 'ga_mean_distance_m' in overall and pd.notna(overall.get('ga_mean_distance_m')):
-        print(f"  Mean GA distance: {overall['ga_mean_distance_m']:.1f}m")
-        print(f"  Mean GA improvement over Dijkstra: {overall['ga_improvement_pct']:.2f}%")
 
     print(f"\nOutputs:")
     print(f"  Results directory: {results_dir}/")

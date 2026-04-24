@@ -11,8 +11,7 @@ import os
 
 def collect_trial_metrics(trial_id: str, seed: int, has_nfz: bool,
                           dijkstra_result: Dict,
-                          aco_results: List[Dict],
-                          ga_results: List[Dict] = None) -> pd.DataFrame:
+                          aco_results: List[Dict]) -> pd.DataFrame:
     """
     Collect metrics from a single trial.
 
@@ -22,7 +21,6 @@ def collect_trial_metrics(trial_id: str, seed: int, has_nfz: bool,
         has_nfz: Whether NFZs were present
         dijkstra_result: Result from dijkstra.build_dijkstra_tour()
         aco_results: List of results from multiple ACO runs
-        ga_results: List of results from multiple GA runs (optional)
 
     Returns:
         DataFrame with metrics for this trial
@@ -59,23 +57,6 @@ def collect_trial_metrics(trial_id: str, seed: int, has_nfz: bool,
             'optimization_time_s': aco_result.get('optimization_time_s', 0.0),
             'notes': f"Converged at iter {aco_result['convergence_iteration']}"
         })
-
-    # GA metrics (multiple runs, if provided)
-    if ga_results:
-        for i, ga_result in enumerate(ga_results):
-            metrics.append({
-                'trial_id': trial_id,
-                'algorithm': 'GA',
-                'run_id': i + 1,
-                'seed': seed,
-                'has_nfz': has_nfz,
-                'distance_m': ga_result['best_tour_distance'],
-                'num_waypoints': len(ga_result['best_tour_path']),
-                'compute_time_s': ga_result['compute_time_s'],
-                'precompute_time_s': ga_result.get('precompute_time_s', 0.0),
-                'optimization_time_s': ga_result.get('optimization_time_s', 0.0),
-                'notes': f"Converged at gen {ga_result.get('convergence_generation', 'N/A')}"
-            })
 
     return pd.DataFrame(metrics)
 
@@ -130,24 +111,6 @@ def compute_summary_statistics(trial_data: pd.DataFrame) -> Dict:
         'num_aco_runs': len(aco_distances)
     }
 
-    # GA statistics (if GA data present)
-    ga_data = trial_data[trial_data['algorithm'] == 'GA']
-    if not ga_data.empty:
-        ga_distances = ga_data['distance_m'].values
-        ga_times = ga_data['compute_time_s'].values
-
-        ga_mean_dist = np.mean(ga_distances)
-        ga_std_dist = np.std(ga_distances)
-        ga_improvement_pct = (dijkstra_dist - ga_mean_dist) / dijkstra_dist * 100
-
-        summary['ga_mean_distance_m'] = ga_mean_dist
-        summary['ga_std_distance_m'] = ga_std_dist
-        summary['ga_min_distance_m'] = np.min(ga_distances)
-        summary['ga_max_distance_m'] = np.max(ga_distances)
-        summary['ga_mean_time_s'] = np.mean(ga_times)
-        summary['ga_improvement_pct'] = ga_improvement_pct
-        summary['num_ga_runs'] = len(ga_distances)
-
     return summary
 
 
@@ -194,16 +157,6 @@ def create_summary_table(all_summaries: List[Dict]) -> pd.DataFrame:
         'improvement_pct': summary_df['improvement_pct'].mean(),
         'num_aco_runs': summary_df['num_aco_runs'].sum()
     }
-
-    # GA overall stats (if present)
-    if 'ga_mean_distance_m' in summary_df.columns:
-        overall_row['ga_mean_distance_m'] = summary_df['ga_mean_distance_m'].mean()
-        overall_row['ga_std_distance_m'] = summary_df['ga_std_distance_m'].mean()
-        overall_row['ga_min_distance_m'] = summary_df['ga_min_distance_m'].mean()
-        overall_row['ga_max_distance_m'] = summary_df['ga_max_distance_m'].mean()
-        overall_row['ga_mean_time_s'] = summary_df['ga_mean_time_s'].mean()
-        overall_row['ga_improvement_pct'] = summary_df['ga_improvement_pct'].mean()
-        overall_row['num_ga_runs'] = summary_df['num_ga_runs'].sum()
 
     summary_df = pd.concat([summary_df, pd.DataFrame([overall_row])], ignore_index=True)
 

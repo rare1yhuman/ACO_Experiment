@@ -36,7 +36,6 @@ plt.rcParams.update({
 COLORS = {
     'dijkstra': '#1f77b4',      # Professional blue
     'aco': '#2ca02c',           # Professional green
-    'ga': '#9467bd',            # Professional purple
     'nfz_edge': '#d62728',      # Red
     'nfz_fill': '#ffcccc',      # Light red
     'depot': '#ff7f0e',         # Orange
@@ -96,7 +95,6 @@ def plot_aco_route(grid: np.ndarray,
                    algorithm_name: str = 'ACO'):
     """
     Figure B: Algorithm route — Publication quality.
-    Works for both ACO and GA routes.
     """
     fig, ax = plt.subplots(figsize=(8, 8))
     _draw_base_map(ax, grid, nfz_blocks, depot, delivery_points)
@@ -203,11 +201,9 @@ def _add_legend(ax, algorithm):
 
 
 def plot_convergence(aco_result: Dict, dijkstra_distance: float,
-                    trial_id: str, output_path: str,
-                    ga_result: Dict = None):
+                    trial_id: str, output_path: str):
     """
-    Figure C: Convergence curve — Publication quality.
-    Shows ACO and optionally GA convergence.
+    Figure C: ACO convergence curve — Publication quality.
     """
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -218,23 +214,10 @@ def plot_convergence(aco_result: Dict, dijkstra_distance: float,
 
     ax.fill_between(iterations, best_curve, avg_curve,
                    alpha=0.15, color=COLORS['aco'])
-    ax.plot(iterations, avg_curve, '--', linewidth=1.5, alpha=0.5,
-           color=COLORS['aco'], label='ACO Mean')
+    ax.plot(iterations, avg_curve, '--', linewidth=1.5, alpha=0.7,
+           color=COLORS['dijkstra'], label='Mean Distance (All Ants)')
     ax.plot(iterations, best_curve, '-', linewidth=2.5,
-           color=COLORS['aco'], label='ACO Best')
-
-    # GA convergence overlay
-    if ga_result and 'convergence_curve' in ga_result:
-        ga_gens = range(1, len(ga_result['convergence_curve']) + 1)
-        ga_best = np.array(ga_result['convergence_curve']) / 1000
-        ga_avg = np.array(ga_result['avg_distances']) / 1000
-        ax.fill_between(ga_gens, ga_best, ga_avg,
-                       alpha=0.10, color=COLORS['ga'])
-        ax.plot(ga_gens, ga_avg, '--', linewidth=1.5, alpha=0.5,
-               color=COLORS['ga'], label='GA Mean')
-        ax.plot(ga_gens, ga_best, '-', linewidth=2.5,
-               color=COLORS['ga'], label='GA Best')
-
+           color=COLORS['aco'], label='Best Distance Found')
     ax.axhline(y=dijkstra_km, color=COLORS['nfz_edge'], linestyle=':',
               linewidth=2, label='Dijkstra Baseline')
 
@@ -247,11 +230,11 @@ def plot_convergence(aco_result: Dict, dijkstra_distance: float,
                bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
                         edgecolor=COLORS['aco']))
 
-    ax.set_title(f'(c) Convergence — Trial {trial_id}', fontweight='bold')
-    ax.set_xlabel('Iteration / Generation')
+    ax.set_title(f'(c) ACO Convergence — Trial {trial_id}', fontweight='bold')
+    ax.set_xlabel('Iteration')
     ax.set_ylabel('Tour Distance (km)')
     ax.legend(loc='upper right', framealpha=0.95)
-    ax.set_xlim(1, max(len(iterations), len(ga_result['convergence_curve']) if ga_result else 0))
+    ax.set_xlim(1, len(iterations))
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.tick_params(direction='in')
 
@@ -304,12 +287,12 @@ def plot_path_score_heatmap(path_score_matrix: np.ndarray, grid: np.ndarray,
 def plot_distance_comparison(summary_df: pd.DataFrame, output_path: str):
     """
     Figure E: Distance comparison — Publication quality.
-    Supports Dijkstra vs ACO vs GA (3-algorithm grouped bars).
+    Y-axis starts at 38 km to amplify visible differences.
+    Dijkstra bars have hatching for B&W print compatibility.
     """
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(8, 5))
 
     trial_data = summary_df[summary_df['trial_id'] != 'Overall'].copy()
-    has_ga = 'ga_mean_distance_m' in trial_data.columns and trial_data['ga_mean_distance_m'].notna().any()
 
     trials = [f'Trial {t}' for t in trial_data['trial_id'].values]
     dijkstra = trial_data['dijkstra_distance_m'].values / 1000
@@ -318,53 +301,43 @@ def plot_distance_comparison(summary_df: pd.DataFrame, output_path: str):
     improvements = trial_data['improvement_pct'].values
 
     x = np.arange(len(trials))
-    n_algos = 3 if has_ga else 2
-    width = 0.8 / n_algos
-    offsets = np.linspace(-width*(n_algos-1)/2, width*(n_algos-1)/2, n_algos)
+    width = 0.35
 
-    bars1 = ax.bar(x + offsets[0], dijkstra, width, label='Dijkstra',
+    bars1 = ax.bar(x - width/2, dijkstra, width, label='Dijkstra',
                   color=COLORS['dijkstra'], edgecolor='black', linewidth=1,
                   hatch='///', alpha=0.85)
-    bars2 = ax.bar(x + offsets[1], aco_mean, width, label='ACO',
+    bars2 = ax.bar(x + width/2, aco_mean, width, label='ACO',
                   color=COLORS['aco'], edgecolor='black', linewidth=1,
                   yerr=aco_std, capsize=4, error_kw={'linewidth': 1.5})
 
-    if has_ga:
-        ga_mean = trial_data['ga_mean_distance_m'].values / 1000
-        ga_std = trial_data['ga_std_distance_m'].values / 1000
-        bars3 = ax.bar(x + offsets[2], ga_mean, width, label='GA',
-                      color=COLORS['ga'], edgecolor='black', linewidth=1,
-                      yerr=ga_std, capsize=4, error_kw={'linewidth': 1.5})
-
-    # Value labels
     label_bbox = dict(facecolor='white', edgecolor='none', alpha=0.85, pad=1.5)
-    for bars, color in [(bars1, COLORS['dijkstra']), (bars2, COLORS['aco'])]:
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., h + 0.15,
-                   f'{h:.1f}', ha='center', va='bottom', fontsize=11,
-                   fontweight='bold', color=color, bbox=label_bbox)
-    if has_ga:
-        for bar in bars3:
-            h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., h + 0.15,
-                   f'{h:.1f}', ha='center', va='bottom', fontsize=11,
-                   fontweight='bold', color=COLORS['ga'], bbox=label_bbox)
+    for bar in bars1:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + 0.15,
+               f'{height:.1f}', ha='center', va='bottom', fontsize=13.5,
+               fontweight='bold', color=COLORS['dijkstra'], bbox=label_bbox)
+    for bar in bars2:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + 0.15,
+               f'{height:.1f}', ha='center', va='bottom', fontsize=13.5,
+               fontweight='bold', color=COLORS['aco'], bbox=label_bbox)
 
-    # Improvement labels
     for i, imp in enumerate(improvements):
         y_pos = max(dijkstra[i], aco_mean[i]) + 2.5
-        if has_ga:
-            y_pos = max(y_pos, ga_mean[i] + 2.5)
-        ax.text(i, y_pos, f'ACO: {imp:+.1f}%', ha='center', fontsize=11,
-               fontweight='bold', color=COLORS['aco'],
+        color = COLORS['aco'] if imp > 0 else COLORS['nfz_edge']
+        ax.text(i, y_pos, f'{imp:+.1f}%', ha='center', fontsize=14.5,
+               fontweight='bold', color=color,
                bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                        edgecolor=COLORS['aco'], alpha=0.8))
+                        edgecolor=color, alpha=0.8))
+
+    mean_dij = dijkstra.mean()
+    ax.axhline(y=mean_dij, color=COLORS['dijkstra'], linestyle=':', linewidth=2.0, alpha=0.6)
+    ax.text(0.5, mean_dij + 0.15, f'Dijkstra Mean: {mean_dij:.1f} km',
+           fontsize=12, ha='center', va='bottom', color=COLORS['dijkstra'], alpha=0.9,
+           bbox=dict(facecolor='white', edgecolor='none', alpha=0.85, pad=1.5))
 
     y_min = 38
-    y_max = max(dijkstra.max(), aco_mean.max()) + 5
-    if has_ga:
-        y_max = max(y_max, ga_mean.max() + 5)
+    y_max = max(dijkstra.max(), aco_mean.max()) + 4.5
     ax.set_ylim(y_min, y_max)
 
     d = 0.015
@@ -372,12 +345,12 @@ def plot_distance_comparison(summary_df: pd.DataFrame, output_path: str):
     ax.plot((-d, +d), (-d, +d), **kwargs)
     ax.plot((1-d, 1+d), (-d, +d), **kwargs)
 
-    ax.set_xlabel('Experimental Trial', fontsize=15)
-    ax.set_ylabel('Total Tour Distance (km)', fontsize=15)
+    ax.set_xlabel('Experimental Trial', fontsize=17)
+    ax.set_ylabel('Total Tour Distance (km)', fontsize=17)
     ax.set_xticks(x)
-    ax.set_xticklabels(trials, fontsize=13)
-    ax.tick_params(direction='in', labelsize=13)
-    ax.legend(loc='upper right', framealpha=0.95, fontsize=13)
+    ax.set_xticklabels(trials, fontsize=14.5)
+    ax.tick_params(direction='in', labelsize=14.5)
+    ax.legend(loc='upper right', framealpha=0.95, fontsize=14)
     ax.grid(True, alpha=0.3, axis='y', linestyle='--')
 
     plt.tight_layout()
@@ -389,54 +362,39 @@ def plot_distance_comparison(summary_df: pd.DataFrame, output_path: str):
 def plot_time_comparison(summary_df: pd.DataFrame, output_path: str):
     """
     Figure F: Compute time comparison — Publication quality.
-    Shows stacked bars (precompute vs optimize) for ACO, and GA time.
+    Shows stacked bars (precompute vs optimize) for ACO.
     """
     fig, ax = plt.subplots(figsize=(10, 6))
 
     trial_data = summary_df[summary_df['trial_id'] != 'Overall'].copy()
-    has_ga = 'ga_mean_time_s' in trial_data.columns and trial_data['ga_mean_time_s'].notna().any()
 
     trials = [f'Trial {t}' for t in trial_data['trial_id'].values]
     dijkstra_time = trial_data['dijkstra_time_s'].values * 1000
     aco_time = trial_data['aco_mean_time_s'].values * 1000
 
-    # ACO timing breakdown (stacked)
     has_breakdown = 'aco_mean_precompute_s' in trial_data.columns
     if has_breakdown:
         aco_precompute = trial_data['aco_mean_precompute_s'].values * 1000
         aco_optimize = trial_data['aco_mean_optimization_s'].values * 1000
 
     x = np.arange(len(trials))
-    n_algos = 3 if has_ga else 2
-    width = 0.8 / n_algos
-    offsets = np.linspace(-width*(n_algos-1)/2, width*(n_algos-1)/2, n_algos)
+    width = 0.35
 
-    # Dijkstra bars
-    ax.bar(x + offsets[0], dijkstra_time, width, label='Dijkstra',
+    ax.bar(x - width/2, dijkstra_time, width, label='Dijkstra',
            color=COLORS['dijkstra'], edgecolor='black', linewidth=1)
 
-    # ACO bars (stacked if breakdown available)
     if has_breakdown:
-        ax.bar(x + offsets[1], aco_precompute, width, label='ACO Precompute',
+        ax.bar(x + width/2, aco_precompute, width, label='ACO Precompute',
                color=COLORS['aco'], edgecolor='black', linewidth=1, alpha=0.6)
-        ax.bar(x + offsets[1], aco_optimize, width, bottom=aco_precompute,
+        ax.bar(x + width/2, aco_optimize, width, bottom=aco_precompute,
                label='ACO Optimize', color=COLORS['aco'], edgecolor='black', linewidth=1)
     else:
-        ax.bar(x + offsets[1], aco_time, width, label='ACO',
+        ax.bar(x + width/2, aco_time, width, label='ACO',
                color=COLORS['aco'], edgecolor='black', linewidth=1)
 
-    if has_ga:
-        ga_time = trial_data['ga_mean_time_s'].values * 1000
-        ax.bar(x + offsets[2], ga_time, width, label='GA',
-               color=COLORS['ga'], edgecolor='black', linewidth=1)
-
-    # Ratio labels
-    for i in range(len(trials)):
-        ratio = aco_time[i] / dijkstra_time[i]
-        y_top = aco_time[i]
-        if has_ga:
-            y_top = max(y_top, ga_time[i])
-        ax.text(i, y_top + 50, f'ACO: {ratio:.1f}×', ha='center',
+    for i, (d, a) in enumerate(zip(dijkstra_time, aco_time)):
+        ratio = a / d
+        ax.text(i, max(d, a) + 50, f'{ratio:.1f}×', ha='center',
                fontsize=10, color=COLORS['text'])
 
     ax.set_title('(f) Computation Time Comparison', fontweight='bold')

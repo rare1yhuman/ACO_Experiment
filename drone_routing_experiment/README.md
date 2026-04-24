@@ -609,7 +609,11 @@ Same seed → same environment → comparable results.
 ### Future Extensions
 
 - **Scale up:** 200×200 or larger grids
-- **Dynamic NFZs:** NFZ appears mid-flight, triggers replanning
+- **Dynamic NFZs:** The current framework assumes static NFZs known before flight. For dynamic environments (temporary flight restrictions, emergency airspace closures, moving obstacles), the architecture supports incremental adaptation:
+  - The Dijkstra distance matrix can be **partially recomputed** when an NFZ changes — only edges adjacent to the modified cells need updating, not the entire matrix.
+  - ACO pheromone trails on invalidated edges can be reset to τ₀, triggering re-exploration of alternative corridors while preserving learned knowledge on unaffected routes.
+  - For **mid-flight replanning**, the remaining unvisited delivery points form a smaller sub-problem. Our timing analysis shows the ACO optimization loop takes only ~790ms on average, making real-time replanning feasible even on embedded flight controllers.
+  - A practical deployment could use a **trigger-based replanning** strategy: continuously monitor airspace updates via ADS-B or UTM feeds, and re-optimize only when a new NFZ intersects the planned route.
 - **Multi-drone:** Fleet coordination with collision avoidance
 - **Stronger baselines:** 2-opt, Or-opt, Christofides algorithm
 - **Real-world integration:** OpenStreetMap data, actual airspace regulations

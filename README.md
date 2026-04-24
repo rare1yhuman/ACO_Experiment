@@ -12,11 +12,9 @@ This repository contains the complete simulation code, experiment runner, and vi
 | Delivery points | 15 |
 | No-Fly Zones | 12 |
 | Trials | 4 (seeds: 42, 7, 99, 42) |
-| **ACO mean improvement** | **8.63%** |
-| **GA mean improvement** | **8.89%** |
-| Best improvement (Trial C, GA) | 14.91% |
+| **Mean improvement over Dijkstra** | **8.63%** |
+| Best improvement (Trial C) | 14.04% |
 | ACO parameters | 50 ants, 200 iterations, α=1.0, β=2.0 |
-| GA parameters | 100 population, 100 generations |
 
 ## Architecture
 
@@ -31,7 +29,6 @@ This repository contains the complete simulation code, experiment runner, and vi
     ├── graph_builder.py           # NetworkX graph from grid (4-connectivity)
     ├── dijkstra.py                # Baseline: nearest-neighbor + Dijkstra
     ├── aco.py                     # Ant Colony System optimizer
-    ├── ga.py                      # Genetic Algorithm optimizer
     ├── metrics.py                 # Metrics collection and aggregation
     ├── visualise.py               # Publication-quality figure generation
     ├── generate_city_map.py       # Cartographic route visualization
@@ -100,11 +97,7 @@ Runs α × β parameter sweep and generates heatmap visualizations.
    - Two-level approach: high-level tour ordering + low-level Dijkstra navigation
    - ACS transition rule (exploitation probability Q₀ = 0.9)
    - Global + local pheromone updates
-   - 50 ants × 200 iterations per trial (10,000 evaluations)
-5. **GA Optimization**: Genetic Algorithm with:
-   - Same two-level approach as ACO
-   - Order Crossover (OX), tournament selection, swap mutation + 2-opt
-   - 100 population × 100 generations (10,000 evaluations, matched budget)
+   - 50 ants × 200 iterations per trial
 
 ## GitHub Repository
 
