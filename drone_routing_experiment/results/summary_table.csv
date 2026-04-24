@@ -1,0 +1,6 @@
+trial_id,seed,has_nfz,dijkstra_distance_m,dijkstra_time_s,aco_mean_distance_m,aco_std_distance_m,aco_min_distance_m,aco_max_distance_m,aco_mean_time_s,aco_mean_precompute_s,aco_mean_optimization_s,improvement_pct,num_aco_runs,ga_mean_distance_m,ga_std_distance_m,ga_min_distance_m,ga_max_distance_m,ga_mean_time_s,ga_improvement_pct,num_ga_runs
+A,42,True,47200.00,0.81,46000.00,0.00,46000.00,46000.00,2.29,1.52,0.76,2.54,10,46000.00,0.00,46000.00,46000.00,2.52,2.54,10
+B,7,True,51400.00,0.80,44200.00,0.00,44200.00,44200.00,2.30,1.52,0.78,14.01,10,44200.00,0.00,44200.00,44200.00,2.58,14.01,10
+C,99,True,55000.00,0.78,47280.00,285.66,47000.00,47600.00,2.31,1.53,0.78,14.04,10,46800.00,0.00,46800.00,46800.00,2.68,14.91,10
+D,42,False,48800.00,0.96,46880.00,240.00,46800.00,47600.00,2.68,1.90,0.79,3.93,10,46800.00,0.00,46800.00,46800.00,3.06,4.10,10
+Overall,-,-,50600.00,0.84,46090.00,131.41,46000.00,46350.00,2.40,1.62,0.78,8.63,40,45950.00,0.00,45950.00,45950.00,2.71,8.89,40

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific exclusions
+Oldpaper/
+Resource/
+
+# Generated outputs (large files reproducible via scripts)
+*.docx
+results/fig_city_map_dijkstra.png
+results/fig_city_map_aco.png
+
+# Logs
+*.log
